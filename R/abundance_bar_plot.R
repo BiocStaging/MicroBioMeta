@@ -11,6 +11,13 @@
 #' @param label Character. Legend title for the taxa groups. Default is `"taxonomy"`.
 #' @param top_n Integer. Number of most abundant taxa groups to display. Default is `15`.
 #' @param x_axis_title Character. The title for the x-axis (default = "Samples")
+#' @param x_label_angle Numeric. Rotation (in degrees) of the x-axis tick
+#'   labels. Default \code{0} (horizontal); set to \code{45} or \code{90} when
+#'   sample names are long enough to overlap.
+#' @param strip_text_bold Logical. If \code{TRUE}, facet strip labels are bold.
+#'   Default \code{FALSE} (plain).
+#' @param aspect_ratio Numeric. Aspect ratio (height/width) of the panel.
+#'   Default \code{NULL} (automatic).
 #' @param add_remained Logical indicating whether to include an "Other" category to sum remaining groups; default is FALSE.
 #' @param width_equal Logical. If \code{TRUE}, all bars have equal width regardless of sample count per group. Default \code{FALSE}.
 #' @param save_table Logical. If \code{TRUE}, saves the relative-abundance table to disk. Default \code{FALSE}.
@@ -36,7 +43,7 @@
 #' metadata <- read.delim(metadata_path, check.names = FALSE)
 #' colnames(metadata)[1] <- "SampleID"
 #'
-#' abundance_barplot(
+#' abundance_bar_plot(
 #'   table        = table,
 #'   metadata     = metadata,
 #'   taxonomy_db  = "silva",
@@ -51,7 +58,7 @@
 
 
 
-abundance_barplot <- function(table,
+abundance_bar_plot <- function(table,
                               metadata,
                               taxonomy_db = "silva",
                               level = "genus",
@@ -61,6 +68,9 @@ abundance_barplot <- function(table,
                               label = "taxonomy",
                               top_n = 15,
                               x_axis_title = "Samples",
+                              x_label_angle = 0,
+                              strip_text_bold = FALSE,
+                              aspect_ratio = NULL,
                               add_remained = FALSE,
                               save_table = FALSE,
                               table_filename = "relative_abundance.txt") {
@@ -91,13 +101,13 @@ abundance_barplot <- function(table,
     dplyr::filter(taxonomy != "d__Eukaryota")
   
   table <- table %>%
-  # quitar taxonomías que solo llegan al dominio/reino
+  # drop taxonomy strings that only reach domain/kingdom level
   dplyr::filter(!grepl("^(d__|k__)[^;]*;[ _;]*$", taxonomy))
-  
-  
+
+
   if (taxonomy_db == "gg2") {
     table <- table %>%
-      # quitar taxonomías con todos los niveles vacíos (__)
+      # drop taxonomy strings with all empty levels (__)
       dplyr::filter(!grepl("(__;?)+$", taxonomy))
   }
   
@@ -131,7 +141,7 @@ abundance_barplot <- function(table,
     }
   }
   
-  # ---- Colapsar taxonomía según nivel ----
+  # ---- Collapse taxonomy according to level ----
   if (taxonomy_db == "unite") {
     if (level == "kingdom") {
       table$taxonomy <- sub(";.*", "", table$taxonomy)
@@ -394,7 +404,7 @@ abundance_barplot <- function(table,
   taxonomy_order <- unique(c(setdiff(taxonomy_order, c("Other", "Unclassified")), "Unclassified", "Other"))
   avg_by_group$taxonomy <- factor(avg_by_group$taxonomy, levels = rev(taxonomy_order))
   
-  # ==== CORRECCIÓN PALLETA ====
+  # ==== PALETTE CORRECTION ====
   tax_levels <- levels(avg_by_group$taxonomy)
   tax_levels_no_other <- setdiff(tax_levels, c("Other", "Unclassified"))
   
@@ -432,29 +442,37 @@ abundance_barplot <- function(table,
       }
       
     ) +
-    ggplot2::theme_bw() +
-    ggplot2::theme(
-      panel.grid = ggplot2::element_blank(),
-      legend.title = ggplot2::element_text(size = 14, color = "black", family = "serif", face = "bold"),
-      strip.text = ggplot2::element_text(size = 12, color = "black", family = "serif", face = "bold"),
-      axis.title.x = ggplot2::element_text(size = 14, color = "black", family = "serif"),
-      axis.title.y = ggplot2::element_text(size = 14, color = "black", family = "serif"),
-      axis.text.x = ggplot2::element_text(size = 12, color = "black", family = "serif"),
-      axis.text.y = ggplot2::element_text(size = 12, color = "black", family = "serif"),
-      legend.text = ggplot2::element_text(size = 12, family = "serif")
+    .mbm_theme(
+      legend_position = "right",
+      extra = ggplot2::theme(
+        panel.grid  = ggplot2::element_blank(),
+        axis.text.x = .mbm_x_text(x_label_angle),
+        strip.text  = .mbm_strip_text(strip_text_bold)
+      )
     ) +
     ggplot2::coord_cartesian(ylim = c(0, 100)) +
     ggplot2::ylab("Relative abundance (%)") +
     ggplot2::xlab(x_axis_title)
   
   if (!is.null(facet_col)) {
+    # Wrap long facet level names (e.g. "Moderate_drought") onto multiple
+    # lines instead of letting them get clipped by a narrow strip
+    strip_labeller <- ggplot2::labeller(
+      .default = ggplot2::label_wrap_gen(width = 10)
+    )
     if (width_equal) {
       p <- p + ggplot2::facet_grid(rows = NULL, cols = vars(!!rlang::sym(facet_col)),
-                                   scales = "free_x", space = "free")
+                                   scales = "free_x", space = "free",
+                                   labeller = strip_labeller)
     } else {
-      p <- p + ggplot2::facet_wrap(ggplot2::vars(!!rlang::sym(facet_col)), scales = "free_x")
+      p <- p + ggplot2::facet_wrap(ggplot2::vars(!!rlang::sym(facet_col)), scales = "free_x",
+                                   labeller = strip_labeller)
     }
   }
-  
+
+  if (!is.null(aspect_ratio)) {
+    p <- p + ggplot2::theme(aspect.ratio = aspect_ratio)
+  }
+
   return(p)
 }

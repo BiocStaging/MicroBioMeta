@@ -27,8 +27,17 @@
 #'   values. If NULL, the palette is chosen via \code{diverging_palette}.
 #' @param diverging_palette Character. Name of a built-in colorblind-friendly
 #'   diverging palette to use when \code{col_palette} is NULL. One of
-#'   \code{"BuOr"} (blue-orange, default), \code{"BuVm"} (blue-vermillion),
-#'   \code{"BuPk"} (blue-pink), \code{"GnPk"} (green-pink).
+#'   \code{"BuOr"} (default; blue-white-orange, the same Okabe-Ito blue/
+#'   orange pairing used for the two-group color convention elsewhere in the
+#'   package, e.g. \code{aldex_volcano_plot}'s col_inf/col_sup and the
+#'   Rhizosphere/Roots colors in the bundled examples), \code{"BuVm"}
+#'   (blue-vermillion), \code{"BuPk"} (blue-pink), \code{"GnPk"}
+#'   (green-pink), \code{"PuYl"} (purple-white-yellow, viridis endpoints);
+#'   or \code{"viridis"} for the plain sequential purple-to-yellow scale
+#'   used in \code{aldex_heatmap_plot} (no neutral midpoint - not
+#'   recommended for correlations, where 0 should look distinct from either
+#'   extreme). All presets have a true white midpoint at 0 except
+#'   \code{"viridis"}.
 #' @param invert_axes Logical. If TRUE, swaps x and y axes in the plot.
 #' @param taxonomy_db Character. Taxonomic database used for annotation and
 #'   parsing. Supported options include ("silva", "unite","Kraken2" and "gg2").
@@ -58,6 +67,7 @@
 #' env_data <- metadata
 #' rownames(env_data) <- env_data$SampleID
 #'
+#' # Uses the default colorblind-friendly diverging palette (purple-white-yellow)
 #' corr_env_abund_plot(
 #'   table          = table,
 #'   env_table      = env_data,
@@ -66,7 +76,6 @@
 #'   method         = "pearson",
 #'   geom           = "tile",
 #'   hc.order       = FALSE,
-#'   col_palette    = c("pink", "white", "purple"),
 #'   invert_axes    = TRUE,
 #'   show_labels    = FALSE,
 #'   level          = "phylum",
@@ -134,33 +143,33 @@ corr_env_abund_plot <- function(table,
     table <- table[, c("taxonomy", ordered_samples)]
   }
   
-  # --- Asegurar identificadores únicos ---
+  # --- Ensure unique identifiers ---
   if (!is.null(rownames(table))) {
     table <- tibble::rownames_to_column(table, var = "OTU_ID")
   } else {
     table$OTU_ID <- paste0("OTU_", seq_len(nrow(table)))
   }
   
-  # --- Limpiar terminaciones vacías en la taxonomía ---
+  # --- Strip trailing empty taxonomy levels ---
   table$taxonomy <- gsub("(;__)+$", "", table$taxonomy)
   
-  # --- Determinar índice del nivel taxonómico ---
+  # --- Determine the index of the taxonomic level ---
   level_idx <- switch(level,
                       kingdom = 1, phylum = 2, class = 3, order = 4,
                       family = 5, genus = 6, species = 7)
   
-  # --- Calcular profundidad taxonómica de cada OTU ---
+  # --- Compute the taxonomic depth of each OTU ---
   get_depth <- function(tax) {
     levels <- unlist(strsplit(tax, ";"))
     sum(grepl("__", levels))
   }
   table$depth <- sapply(table$taxonomy, get_depth)
   
-  # --- Separar filas según resolución taxonómica ---
+  # --- Split rows by taxonomic resolution ---
   lowres <- table[table$depth < level_idx, ]    
   highres <- table[table$depth >= level_idx, ]  
   
-  # --- Recortar y colapsar taxonomías con suficiente resolución ---
+  # --- Trim and collapse taxonomies with sufficient resolution ---
   highres$taxonomy <- sapply(highres$taxonomy, function(tax) {
     levels <- unlist(strsplit(tax, ";"))
     paste(levels[1:level_idx], collapse = ";")
@@ -194,7 +203,7 @@ corr_env_abund_plot <- function(table,
   
   
   #modificar la columna taxonomy para solo conservar el nombre al nivel que colapsamos
-  #esto hace que al graficar salga sólo ese nombre y no toda la taxonomía
+  #this way the plot shows only that name instead of the full taxonomy string
   
   
   if (taxonomy_db %in% c("unite","silva", "gg2") && level == "species") {
@@ -328,34 +337,40 @@ corr_env_abund_plot <- function(table,
       )
   }
   
-  # 1️⃣ Convertir nombres de fila en columna OTU_ID
+  # 1. Convert row names into an OTU_ID column
   table <- table %>%
     tibble::rownames_to_column(var = "OTU_ID")
 
-  # 2️⃣ Crear una nueva tabla llamada taxon con OTU_ID y taxonomy
+  # 2. Create a new table called taxon with OTU_ID and taxonomy
   taxon <- table %>%
     dplyr::select(OTU_ID, taxonomy)
 
-  # 3️⃣ Eliminar la columna taxonomy de table
+  # 3. Remove the taxonomy column from table
   table <- table %>%
     dplyr::select(-taxonomy)
 
-  # 4️⃣ Convertir OTU_ID nuevamente en nombres de fila
+  # 4. Convert OTU_ID back into row names
   table <- table %>%
     tibble::column_to_rownames(var = "OTU_ID")
   
   
   
-  # Paleta por defecto
+  # Default palette
   if (is.null(col_palette)) {
-    preset <- .mbm_div_palettes[[diverging_palette]]
-    if (is.null(preset)) {
-      warning("Unknown diverging_palette '", diverging_palette,
-              "'. Using 'BuOr'. Valid options: ",
-              paste(names(.mbm_div_palettes), collapse = ", "))
-      preset <- .mbm_div_palettes[["BuOr"]]
+    if (identical(diverging_palette, "viridis")) {
+      # Sequential, colorblind-friendly viridis scale (same family used for
+      # the heatmap body in aldex_heatmap_plot's "Median clr value")
+      col_palette <- viridis::viridis(200, option = "C", direction = -1)
+    } else {
+      preset <- .mbm_div_palettes[[diverging_palette]]
+      if (is.null(preset)) {
+        warning("Unknown diverging_palette '", diverging_palette,
+                "'. Using 'PuYl'. Valid options: 'viridis', ",
+                paste(names(.mbm_div_palettes), collapse = ", "))
+        preset <- .mbm_div_palettes[["PuYl"]]
+      }
+      col_palette <- grDevices::colorRampPalette(preset)(200)
     }
-    col_palette <- grDevices::colorRampPalette(preset)(200)
   }
   # --- Filas comunes
   common_samples <- base::intersect(colnames(table), rownames(env_table))
@@ -385,7 +400,7 @@ corr_env_abund_plot <- function(table,
   abund <- sweep(counts, 2, colSums(counts, na.rm = TRUE), FUN = "/") * 100
   abund <- abund[apply(abund, 1, sd, na.rm = TRUE) > 0, , drop = FALSE]
   
-  # Matriz de correlación general
+  # Overall correlation matrix
   corr_mat <- stats::cor(env, t(abund), method = method, use = "pairwise.complete.obs")
   
   
@@ -431,7 +446,7 @@ corr_env_abund_plot <- function(table,
   
   
   
-  # Clustering jerárquico
+  # Hierarchical clustering
   if (hc.order) {
     d_row <- stats::dist(1 - corr_mat)
     hc_row <- stats::hclust(d_row)
@@ -446,18 +461,18 @@ corr_env_abund_plot <- function(table,
   corr_df <- reshape2::melt(corr_mat,
                             varnames = c("Environmental", "Group"),
                             value.name = "Correlation")
-  # --- Añadir taxonomía a los resultados derretidos ---
-  # corr_df$Group son los OTU_ID, vamos a unir con la tabla taxon
+  # --- Add taxonomy to the melted results ---
+  # corr_df$Group holds the OTU_IDs; join with the taxon table
   corr_df <- dplyr::left_join(
     corr_df,
     taxon,
     by = c("Group" = "OTU_ID")
   )
   
-  # Reemplazar "Group" por el nombre taxonómico
+  # Replace "Group" with the taxonomic name
   corr_df$Taxon <- corr_df$taxonomy
   corr_df$taxonomy <- NULL
-  # Base del gráfico
+  # Base plot
   if (invert_axes) {
     p <- ggplot2::ggplot(corr_df,
                          ggplot2::aes(x = Environmental, y = Taxon, fill = Correlation))
@@ -466,7 +481,7 @@ corr_env_abund_plot <- function(table,
                          ggplot2::aes(x = Taxon, y = Environmental, fill = Correlation))
   }
   
-  # Elegir tipo de gráfico, "tile" es como heatmap y "circle" como bubbleplot
+  # Choose plot type: "tile" behaves like a heatmap, "circle" like a bubble plot
   if (geom == "tile") {
     p <- p + ggplot2::geom_tile(color = "gray80")
     if (show_labels) {

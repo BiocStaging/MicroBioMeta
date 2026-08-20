@@ -6,11 +6,11 @@
 #'
 #' @param table A data frame containing taxonomic abundance data with a column named `taxonomy` and subsequent columns as sample IDs.
 #' @param metadata A data frame containing metadata with a column named `SAMPLEID` that matches the sample columns in `table`.
-#' @param merge_by A character string specifying the metadata column by which to group and merge samples. Default is `Tratamiento`.
+#' @param merge_by A character string specifying the metadata column by which to group and merge samples.
 #' @param selected_samples Optional character vector specifying a subset of sample IDs to include in the analysis.
 #' @param min_prevalence Optional numeric value (0-1) to filter taxa based on minimum prevalence across groups.
 #' @param title Optional character string for the title of the plot.
-#' @param method Character string: `ggVennDiagram` (default) or `ggvenn`, specifying the package to use for Venn diagram generation.
+#' @param method Character string: `ggvenn` (default) or `ggVennDiagram`, specifying the package to use for Venn diagram generation.
 #' @param group_colors Optional vector of colors for the groups. If NULL, a default `distiller` scale with `Set3` palette will be used.
 #' @param save_table Logical. If \code{TRUE}, saves a long-format table of taxa
 #'   membership per group to disk. Default \code{FALSE}.
@@ -30,7 +30,7 @@
 #' metadata <- read.delim(metadata_path, check.names = FALSE)
 #' colnames(metadata)[1] <- "SAMPLEID"
 #'
-#' venn_diagram_plot(
+#' venn_plot(
 #'   table          = table,
 #'   metadata       = metadata,
 #'   merge_by       = "Location",
@@ -38,7 +38,7 @@
 #' )
 #'
 #' ## Filtering taxa by prevalence
-#' venn_diagram_plot(
+#' venn_plot(
 #'   table          = table,
 #'   metadata       = metadata,
 #'   merge_by       = "Location",
@@ -46,7 +46,7 @@
 #' )
 #'
 #' ## Custom colors
-#' venn_diagram_plot(
+#' venn_plot(
 #'   table          = table,
 #'   metadata       = metadata,
 #'   merge_by       = "Location",
@@ -54,7 +54,7 @@
 #'   group_colors   = c("#1B9E77", "#D95F02")
 #' )
 #' }
-venn_diagram_plot <- function(table, metadata, merge_by = NULL,
+venn_plot <- function(table, metadata, merge_by = NULL,
                               selected_samples = NULL, min_prevalence = 0,
                               title = NULL, method = "ggvenn",
                               group_colors = NULL,
@@ -86,12 +86,16 @@ venn_diagram_plot <- function(table, metadata, merge_by = NULL,
   # Default palette - Okabe-Ito (colorblind-friendly)
   use_manual <- !is.null(group_colors)
   if (!use_manual) {
-    group_colors <- rep_len(.mbm_colors, num_groups)
+    group_colors <- if (num_groups == 2) {
+      .mbm_colors_2group
+    } else {
+      rep_len(.mbm_colors, num_groups)
+    }
   } else {
     group_colors <- rep(group_colors, length.out = num_groups)
   }
   
-  # Crear lista según el método
+  # Build the list of sets to compare
   lista <- lapply(metadata_split, function(samps) {
     subset <- table[, samps, drop = FALSE]
     subset_core <- if (min_prevalence > 0) {
@@ -113,7 +117,7 @@ venn_diagram_plot <- function(table, metadata, merge_by = NULL,
     message(paste("Table saved as:", table_filename))
   }
 
-  # Selección del método
+  # Method selection
   if (tolower(method) == "ggvenndiagram") {
     venn_plot <- ggVennDiagram::ggVennDiagram(
       lista,

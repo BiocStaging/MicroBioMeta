@@ -46,8 +46,9 @@
 #'   bar plot (2-group or continuous \code{col_cond}). First color is the
 #'   "positive" direction (the non-reference group / increases with the
 #'   variable); second color is the "negative" direction (the reference
-#'   group / decreases with the variable). Default \code{c("#56B4E9",
-#'   "#E69F00")} (colorblind-friendly blue/yellow). Ignored for the
+#'   group / decreases with the variable). Default \code{c("#0072B2",
+#'   "#E69F00")} (the same colorblind-friendly blue/orange pairing used as
+#'   the 2-group default throughout the package). Ignored for the
 #'   3+-group heatmap, which uses \code{diverging_palette} instead.
 #' @param save_table Logical. If \code{TRUE}, saves the full ANCOMBC2 results
 #'   table to disk. Default \code{FALSE}.
@@ -89,7 +90,7 @@ ancombc_plot <- function(table,
                          rand_formula      = NULL,
                          ref_level         = NULL,
                          diverging_palette = "BuOr",
-                         bar_colors        = c("#56B4E9", "#E69F00"),
+                         bar_colors        = c("#0072B2", "#E69F00"),
                          save_table        = FALSE,
                          table_filename    = "ancombc_results.txt") {
 
@@ -97,12 +98,14 @@ ancombc_plot <- function(table,
     stop("`bar_colors` must have at least 2 colors.")
 
   # --- 0. package checks ---------------------------------------------------
-  # ANCOMBC and phyloseq are on Bioconductor and can be auto-installed.
+  # ANCOMBC and phyloseq are on Bioconductor.
   for (pkg in c("ANCOMBC", "phyloseq")) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
-      if (!requireNamespace("BiocManager", quietly = TRUE))
-        install.packages("BiocManager")
-      BiocManager::install(pkg)
+      stop(
+        "Package '", pkg, "' is required but not installed.\n",
+        "Install it with: BiocManager::install(\"", pkg, "\")",
+        call. = FALSE
+      )
     }
   }
   # qiime2R lives on GitHub only; it cannot be auto-installed via BiocManager.
@@ -262,7 +265,7 @@ ancombc_plot <- function(table,
         extra = ggplot2::theme(
           axis.text.y        = ggplot2::element_text(size = 12, face = "italic",
                                                      color = "black"),
-          panel.grid.major.y = ggplot2::element_blank()
+          panel.grid         = ggplot2::element_blank()
         )
       )
   }
@@ -314,7 +317,7 @@ ancombc_plot <- function(table,
         extra = ggplot2::theme(
           axis.text.y        = ggplot2::element_text(size = 12, face = "italic",
                                                      color = "black"),
-          panel.grid.major.y = ggplot2::element_blank()
+          panel.grid         = ggplot2::element_blank()
         )
       )
   }

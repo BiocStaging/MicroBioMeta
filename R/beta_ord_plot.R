@@ -53,7 +53,7 @@
 #' metadata <- read.delim(metadata_path, check.names = FALSE)
 #' colnames(metadata)[1] <- "SampleID"
 #'
-#' beta_div_plot(
+#' beta_ord_plot(
 #'   table      = table,
 #'   metadata   = metadata,
 #'   distance   = "aitchison",
@@ -64,7 +64,7 @@
 #' }
 
 
-beta_div_plot <- function(table, metadata,
+beta_ord_plot <- function(table, metadata,
                           distance = "compositional",
                           ordination = "PCA",
                           group_col = NULL,
@@ -169,6 +169,12 @@ beta_div_plot <- function(table, metadata,
   
   is_continuous <- !is.null(group_col) && is.numeric(merged[[group_col]])
   legend_name   <- ifelse(is.null(legend_title), group_col, legend_title)
+  colorb_default <- if (!is_continuous && !is.null(group_col) &&
+                        length(unique(merged[[group_col]])) == 2) {
+    .mbm_colors_2group
+  } else {
+    .mbm_colors
+  }
 
   # `palette` can be a palette *name* (single string) or a *vector of fixed
   # colors*; either way, is_continuous decides whether it becomes a
@@ -202,8 +208,8 @@ beta_div_plot <- function(table, metadata,
           "brewer"  = if (fill) ggplot2::scale_fill_brewer(name = legend_name, palette = "Set2")
                       else ggplot2::scale_color_brewer(name = legend_name, palette = "Set2"),
           # "colorb" (default) or any other name -> package qualitative palette
-          if (fill) ggplot2::scale_fill_manual(name = legend_name, values = .mbm_colors)
-          else ggplot2::scale_color_manual(name = legend_name, values = .mbm_colors)
+          if (fill) ggplot2::scale_fill_manual(name = legend_name, values = colorb_default)
+          else ggplot2::scale_color_manual(name = legend_name, values = colorb_default)
         )
       }
     }

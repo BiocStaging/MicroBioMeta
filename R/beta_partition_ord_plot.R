@@ -39,7 +39,8 @@
 #' metadata <- read.delim(metadata_path, check.names = FALSE)
 #' colnames(metadata)[1] <- "SampleID"
 #'
-#' beta_partition_plot(
+#' # Always tagged A/B/C (see panel_label_case and panel_labels to customize)
+#' beta_partition_ord_plot(
 #'   table      = table,
 #'   metadata   = metadata,
 #'   group_col  = "Location",
@@ -48,7 +49,7 @@
 #' }
 
 
-beta_partition_plot <- function(table, metadata, 
+beta_partition_ord_plot <- function(table, metadata, 
                                 index = "jaccard", 
                                 group_col = NULL, 
                                 shape_col = NULL, 
@@ -71,17 +72,17 @@ beta_partition_plot <- function(table, metadata,
 
   suppressWarnings({
 
-    # --- Aceptar también data.frame como matriz ---
+    # --- Also accept a data.frame as input, coercing it to a matrix ---
     if (is.data.frame(table)) {
-      
-      # buscar columna de taxonomía
+
+      # find the taxonomy column
       tax_cols <- grep("taxonomy|taxon|Taxonomy|Taxa", names(table))
-      
+
       if (length(tax_cols) > 0) {
         table <- table[, -tax_cols[1], drop = FALSE]
       }
-      
-      # conservar solo columnas numéricas
+
+      # keep only numeric columns
       table <- table[, sapply(table, is.numeric), drop = FALSE]
       
       # convertir a matriz
@@ -149,10 +150,10 @@ beta_partition_plot <- function(table, metadata,
     jtus_df <- betadisper_to_df(jtus)
     jnes_df <- betadisper_to_df(jnes)
     
-    # Obtener nombre base sin extensión
+    # Get base name without extension
     base_name <- tools::file_path_sans_ext(table_filename)
-    
-    # Generar nombres únicos
+
+    # Generate unique file names
     file_jacs <- paste0(base_name, "_jacs.txt")
     file_jtus <- paste0(base_name, "_jtus.txt")
     file_jnes <- paste0(base_name, "_jnes.txt")
@@ -202,6 +203,8 @@ beta_partition_plot <- function(table, metadata,
     
     color_scale <- if(!is.null(group_colors)) {
       ggplot2::scale_color_manual(values = group_colors)
+    } else if (length(unique(env1[[group_col]])) == 2) {
+      ggplot2::scale_color_manual(values = .mbm_colors_2group)
     } else {
       ggplot2::scale_color_manual(values = .mbm_colors)
     }
@@ -255,11 +258,16 @@ beta_partition_plot <- function(table, metadata,
     plot_nes + ggplot2::theme(legend.position = "none") + ggplot2::theme(plot.title = ggplot2::element_text(size = 14, color = "black", family = "serif", face = "bold")) +
       ggplot2::ylab("") + ggplot2::xlab("DIM1") + ggplot2::theme(aspect.ratio = 10/10) + ggplot2::ggtitle(paste0("Nestedness component (mean = ", mean_nes, ")")),
     ncol = 3, align = "hv", labels = resolved_labels, label_fontfamily = "serif",
-    label_fontface = panel_fontface
+    label_fontface = panel_fontface,
+    label_size = 14,
+    label_x = 0,
+    label_y = 1,
+    hjust = -0.2,
+    vjust = 1.3
     )
   
   combined_plot <- cowplot::plot_grid(leg, panel, ncol = 1, rel_heights = c(0.1,1))
   
   return(combined_plot)
-  })  # <- aquí se cierra suppressWarnings
+  })  # <- closes suppressWarnings
 }

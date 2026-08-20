@@ -39,19 +39,20 @@
 #' table_path <- system.file("extdata", "tabla_bacteria.txt", package = "MicroBioMeta")
 #' table <- read.delim(table_path, row.names = 1, check.names = FALSE)
 #'
-#' alpha_hill_corrplot(
+#' # Always tagged A/B/C (see panel_label_case and panel_labels to customize)
+#' alpha_hill_corr_plot(
 #'   table             = table,
 #'   facet_orientation = "horizontal"
 #' )
 #'
 #' ## Using Pearson correlation instead of the default Spearman
-#' alpha_hill_corrplot(
+#' alpha_hill_corr_plot(
 #'   table  = table,
 #'   method = "pearson"
 #' )
 #' }
 
-alpha_hill_corrplot <- function(table,
+alpha_hill_corr_plot <- function(table,
                                 method = "spearman",
                                 facet_orientation = "horizontal",
                                 title = "default",
@@ -61,11 +62,11 @@ alpha_hill_corrplot <- function(table,
                                 save_table = FALSE,
                                 table_filename = "hill.txt") {
 
-  # --- Preparación de datos ---
+  # --- Data preparation ---
   table <- table[, !colnames(table) %in% "taxonomy"]
   table <- data.frame(t(table))
 
-  # --- Calcular Hill numbers ---
+  # --- Compute Hill numbers ---
   q_data <- data.frame(
     SampleID = rownames(table),
     Frequency = rowSums(table),
@@ -80,7 +81,7 @@ alpha_hill_corrplot <- function(table,
     message(paste("Table saved as:", table_filename))
   }
 
-  # --- Tema base común ---
+  # --- Common base theme ---
   base_theme <- .mbm_theme(
     legend_position = "none",
     extra = ggplot2::theme(
@@ -88,10 +89,10 @@ alpha_hill_corrplot <- function(table,
     )
   )
   
-  # --- Relación de aspecto ---
+  # --- Aspect ratio ---
   aspect_ratio_theme <- if (facet_orientation == "horizontal") NULL else 0.5
   
-  # --- Gráfico q0 ---
+  # --- q0 plot ---
   q0_vs_depth <- ggpubr::ggscatter(
     q_data, x = "Frequency", y = "q0",
     xlab = "Sequencing depth (number of reads)",
@@ -113,7 +114,7 @@ alpha_hill_corrplot <- function(table,
     ggplot2::labs(y = expression(paste(italic("q"), "=0", " (number of total features)"))) +
     ggplot2::theme(aspect.ratio = aspect_ratio_theme)
   
-  # --- Gráfico q1 ---
+  # --- q1 plot ---
   q1_vs_depth <- ggpubr::ggscatter(
     q_data, x = "Frequency", y = "q1",
     xlab = "Sequencing depth (number of reads)",
@@ -135,7 +136,7 @@ alpha_hill_corrplot <- function(table,
     ggplot2::labs(y = expression(paste(italic("q"), "=1", " (number of frequent features)"))) +
     ggplot2::theme(aspect.ratio = aspect_ratio_theme)
   
-  # --- Gráfico q2 ---
+  # --- q2 plot ---
   q2_vs_depth <- ggpubr::ggscatter(
     q_data, x = "Frequency", y = "q2",
     xlab = "Sequencing depth (number of reads)",
@@ -157,7 +158,7 @@ alpha_hill_corrplot <- function(table,
     ggplot2::labs(y = expression(paste(italic("q"), "=2", " (number of dominant features)"))) +
     ggplot2::theme(aspect.ratio = aspect_ratio_theme)
   
-  # --- Componer grid de gráficos ---
+  # --- Compose plot grid ---
   resolved_labels <- if (!is.null(panel_labels)) {
     panel_labels
   } else if (identical(panel_label_case, "lower")) c("a", "b", "c") else c("A", "B", "C")
@@ -170,7 +171,11 @@ alpha_hill_corrplot <- function(table,
       nrow = 1,
       label_fontfamily = "serif",
       label_fontface = panel_fontface,
-      label_size = 16
+      label_size = 14,
+      label_x = 0,
+      label_y = 1,
+      hjust = -0.2,
+      vjust = 1.3
     )
   } else {
     cowplot::plot_grid(
@@ -179,11 +184,15 @@ alpha_hill_corrplot <- function(table,
       ncol = 1,
       label_fontfamily = "serif",
       label_fontface = panel_fontface,
-      label_size = 16
+      label_size = 14,
+      label_x = 0,
+      label_y = 1,
+      hjust = -0.2,
+      vjust = 1.3
     )
   }
   
-  # --- Título del gráfico ---
+  # --- Plot title ---
   if (is.character(title)) {
     if (tolower(title) == "none") {
       return(grid_plot)

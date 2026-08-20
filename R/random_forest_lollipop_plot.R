@@ -25,7 +25,7 @@
 #' metadata <- read.delim(metadata_path, check.names = FALSE)
 #' colnames(metadata)[1] <- "SampleID"
 #'
-#' randomf_lollipop_plot(
+#' random_forest_lollipop_plot(
 #'   table               = table,
 #'   metadata            = metadata,
 #'   variable_to_predict = "Location",
@@ -33,7 +33,7 @@
 #'   size                = 6
 #' )
 #' }
-randomf_lollipop_plot <- function(table,
+random_forest_lollipop_plot <- function(table,
                                   metadata,
                                   top_n = 15,
                                   size =8,
@@ -58,7 +58,7 @@ randomf_lollipop_plot <- function(table,
   
   # Transpose if samples are in rows
   if (ncol(table_numeric) < nrow(table_numeric)) {
-    table_numeric <- data.frame(t(table_numeric), check.names = F)
+    table_numeric <- data.frame(t(table_numeric), check.names = FALSE)
   }
   
   # Find common samples between table and metadata
@@ -207,6 +207,7 @@ randomf_lollipop_plot <- function(table,
     .mbm_theme(
       legend_position = "right",
       extra = ggplot2::theme(
+        panel.grid   = ggplot2::element_blank(),
         axis.title.y = ggplot2::element_blank(),
         axis.text.y  = ggplot2::element_text(size = 12, color = "black",
                                               face = "italic")

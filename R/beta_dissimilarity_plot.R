@@ -10,11 +10,17 @@
 #' @param comparison_condition1 Optional vector of comparison labels for the first condition.
 #' @param condition1_col Column name in metadata for the first condition.
 #' @param condition2_col Optional column name in metadata for the second condition (used as facet).
-#' @param facet_colors Optional vector of colors for facet strips. Defaults to RColorBrewer "Set2".
-#' @param group_colors Optional named vector of colors for x-axis groups. Defaults to RColorBrewer "Set2".
+#' @param facet_colors Optional vector of colors for facet strips. Defaults to a neutral \code{"grey85"} background.
+#' @param group_colors Optional named vector of colors for x-axis groups. Defaults to the package's
+#'   colorblind-friendly Okabe-Ito palette (\code{.mbm_colors}, orange/blue first).
 #' @param x_axis_title Title for the x-axis.
 #' @param partition Type of beta diversity to compute: "shared", "turnover", or "nestedness".
 #' @param family Family for turnover/nestedness calculation: "sorensen" or "jaccard".
+#' @param x_label_angle Numeric. Rotation (in degrees) of the x-axis tick
+#'   labels. Default \code{0} (horizontal); use e.g. \code{45} or \code{90} when
+#'   comparison names are long enough to overlap.
+#' @param strip_text_bold Logical. If \code{TRUE}, facet strip labels are bold. Default \code{FALSE}.
+#' @param aspect_ratio Numeric. Sets the aspect ratio (height/width) of each panel. Default \code{NULL} (automatic).
 #' @param save_table Logical. If \code{TRUE}, saves the beta diversity table to disk. Default \code{FALSE}.
 #' @param table_filename Character. File path/name for the saved table. Default \code{"betadiv_table.txt"}.
 #'
@@ -30,7 +36,7 @@
 #' metadata <- read.delim(metadata_path, check.names = FALSE)
 #' colnames(metadata)[1] <- "SampleID"
 #'
-#' beta_diversity_boxplot(
+#' beta_dissimilarity_plot(
 #'   table                = table,
 #'   metadata             = metadata,
 #'   comparison_condition1 = c("Rhizosphere_vs_Roots"),
@@ -42,7 +48,7 @@
 #' )
 #' }
 
-beta_diversity_boxplot <- function(
+beta_dissimilarity_plot <- function(
     table, metadata,
     comparison_condition1 = NULL,
     condition1_col,
@@ -52,13 +58,12 @@ beta_diversity_boxplot <- function(
     x_axis_title = "Condition",
     partition = c("shared","turnover","nestedness"),
     family = c("sorensen","jaccard"),
+    x_label_angle = 0,
+    strip_text_bold = FALSE,
+    aspect_ratio = NULL,
     save_table = FALSE,
     table_filename = "betadiv_table.txt"
 ) {
-  
-  # --- Ensure required packages ---
-  pkgs <- c("reshape2","betapart","ggpubr","ggh4x","dplyr","ggplot2","RColorBrewer")
-  for(pkg in pkgs) if(!requireNamespace(pkg, quietly = TRUE)) install.packages(pkg, dependencies = TRUE)
   
   # --- Remove taxonomy column if present ---
   tax_col <- grep("taxonomy|Taxonomy|taxon|Taxa|taxa|Taxon", names(table), ignore.case = TRUE)
@@ -116,7 +121,9 @@ beta_diversity_boxplot <- function(
   }
   # --- Default palettes if missing ---
   n_groups <- length(unique(beta_df$condition1_group))
-  if(is.null(group_colors)) group_colors <- rep_len(.mbm_colors, n_groups)
+  if(is.null(group_colors)) {
+    group_colors <- if (n_groups == 2) .mbm_colors_2group else rep_len(.mbm_colors, n_groups)
+  }
   if(!is.null(names(group_colors)==FALSE)) names(group_colors) <- unique(beta_df$condition1_group)
 
   if(!is.null(condition2_col)) {
@@ -125,6 +132,18 @@ beta_diversity_boxplot <- function(
   }
   
 
+  base_theme <- .mbm_theme(
+    legend_position = "right",
+    extra = ggplot2::theme(
+      panel.grid  = ggplot2::element_blank(),
+      strip.text  = .mbm_strip_text(strip_text_bold),
+      axis.text.x = .mbm_x_text(x_label_angle)
+    )
+  )
+  if (!is.null(aspect_ratio)) {
+    base_theme <- base_theme + ggplot2::theme(aspect.ratio = aspect_ratio)
+  }
+
   # --- Create figure ---
   if(!is.null(condition2_col)) {
     figura <- ggpubr::ggboxplot(
@@ -132,8 +151,8 @@ beta_diversity_boxplot <- function(
     ) +
       ggplot2::ylab(paste0("Beta diversity (",partition,")")) +
       ggplot2::scale_fill_manual(values=group_colors) +
-      ggplot2::labs(fill = "Comparison")+
-      .mbm_theme(legend_position = "right") +
+      ggplot2::labs(fill = "Comparison") +
+      base_theme +
       ggh4x::facet_grid2(
         stats::as.formula(paste(". ~", paste0(condition2_col,".x"))),
         scales="free_x",
@@ -146,8 +165,9 @@ beta_diversity_boxplot <- function(
     ) +
       ggplot2::ylab(paste0("Beta diversity (",partition,")")) +
       ggplot2::scale_fill_manual(values=group_colors) +
-      ggplot2::xlab(x_axis_title)
+      ggplot2::xlab(x_axis_title) +
+      base_theme
   }
-  
+
   return(figura)
 }
