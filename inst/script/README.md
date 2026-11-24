@@ -15,8 +15,9 @@ Sequences were processed in QIIME 2 (ASVs, SILVA taxonomy). The feature table
 and the taxonomy were exported from the QIIME 2 artifacts (`.qza`) to
 tab-delimited text.
 
-- `table_bacteria.txt`: ASV counts (6045 ASVs x 255 samples). Used in the
-  vignettes.
+- `table_bacteria.txt`: ASV counts (6045 ASVs x 79 samples). Only the
+  samples of month 2, the ones used in the vignettes, are kept to reduce the
+  package size.
 - `taxonomy_bacteria.txt`: taxonomy of each ASV (`Feature.ID`, `Taxon`,
   `Confidence`).
 - `metadata_bacteria.txt`: sample metadata (294 samples), including soil

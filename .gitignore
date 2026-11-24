@@ -13,3 +13,4 @@ inst/doc
 /tests/data/
 /Rplots.pdf
 *.BiocCheck/
+docs/

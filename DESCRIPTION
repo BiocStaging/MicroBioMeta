@@ -1,6 +1,6 @@
 Package: MicroBioMeta
 Title: Analysis and Visualization of Microbiome Diversity, Composition, and Differential Abundance
-Version: 0.99.1
+Version: 0.99.2
 Date: 2026-10-12
 Authors@R: c(
     person("Stephanie", "Hereira Pacheco", , "shereirap@gmail.com", role = c("aut", "cre"),
